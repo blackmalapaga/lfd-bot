@@ -12,14 +12,28 @@ const {
 } = require("discord.js");
 const axios = require("axios");
 const cheerio = require("cheerio");
+const express = require("express");
 
+// ================= EXPRESS WEB SERVER (FOR RENDER PORT BINDING) =================
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => {
+    res.send("Bot is up and running for Render!");
+});
+
+app.listen(PORT, () => {
+    console.log(`Web server listening on port ${PORT}`);
+});
+
+// ================= DISCORD BOT SETUP =================
 const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
 const userData = new Map();
 
-client.once("ready", () => {
+client.once("clientReady", () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
@@ -107,11 +121,10 @@ client.on("interactionCreate", async (interaction) => {
 
         userData.set(interaction.user.id, data);
 
-        // POST HANDLING (WITH DEFER TO PREVENT TIMEOUTS)
+        // POST HANDLING (WITH DEFER TO PREVENT TIMEOUTS DURING SCRAPING)
         if (interaction.customId === "send_post") {
             if (!data.name) return interaction.reply({ content: "Setup first", ephemeral: true });
             
-            // Defer since scraping external HTML takes time
             await interaction.deferReply({ ephemeral: true });
 
             data.pr = await getPR(data.name);
@@ -159,7 +172,7 @@ function buildEmbed(data) {
     return new EmbedBuilder()
         .setTitle("🟣 BUSCANDO JUGADORES")
         .setColor("DarkButNotBlack")
-        .setDescription("Fill all options below, then press **SEND POST**")
+        .setDescription("Fill all options below, then press **⚡ SEND POST**")
         .addFields(
             { name: "Player", value: data.name || "N/A", inline: true },
             { name: "Team", value: data.team || "N/A", inline: true },
@@ -174,7 +187,6 @@ function buildEmbed(data) {
 }
 
 function buildUI() {
-    // Merged buttons cleanly to fit into the maximum 5-component-row limit per message
     return [
         // ROW 1: TEAM SIZE & PLATFORM
         new ActionRowBuilder().addComponents(
@@ -184,7 +196,7 @@ function buildUI() {
             new ButtonBuilder().setCustomId("platform_console").setLabel("Console").setStyle(ButtonStyle.Success)
         ),
 
-        // ROW 2: ROLES
+        // ROW 2: ROLES & SUBMIT
         new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("role_igl").setLabel("IGL").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("role_fragger").setLabel("Fragger").setStyle(ButtonStyle.Primary),
