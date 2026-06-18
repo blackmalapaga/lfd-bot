@@ -20,14 +20,14 @@ const client = new Client({
 
 const userData = new Map();
 
-client.once("ready", () => {
+client.once("clientReady", () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
-// ================= MAIN =================
+// ================= COMMAND =================
 client.on("interactionCreate", async (interaction) => {
 
-    // ===== /lfd COMMAND =====
+    // ===== /lfd =====
     if (interaction.isChatInputCommand() && interaction.commandName === "lfd") {
 
         const modal = new ModalBuilder()
@@ -44,91 +44,99 @@ client.on("interactionCreate", async (interaction) => {
             new ActionRowBuilder().addComponents(nameInput)
         );
 
-        return interaction.showModal(modal);
+        try {
+            return await interaction.showModal(modal);
+        } catch (err) {
+            console.error("Modal error:", err);
+        }
     }
 
-    // ===== MODAL SUBMIT =====
+    // ===== MODAL =====
     if (interaction.isModalSubmit() && interaction.customId === "lfd_modal") {
 
         const fortniteName = interaction.fields.getTextInputValue("fortnite_name");
 
         userData.set(interaction.user.id, {
             fortniteName,
-            ping: "",
-            fps: "",
-            role: "",
-            teamSize: "",
-            region: "",
-            mode: "",
+            ping: null,
+            fps: null,
+            role: null,
+            teamSize: null,
+            region: null,
+            mode: null,
             pr: "Loading..."
         });
 
         const embed = new EmbedBuilder()
-            .setTitle("LFD SETUP PANEL")
-            .setDescription("Complete your profile below and press SEND when ready.");
+            .setTitle("🎮 LFD SYSTEM")
+            .setDescription("Fill everything below then press **SEND**")
+            .setColor("Blue");
 
-        // ===== ROW 1: TEAM =====
-        const teamMenu = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("team_size")
-                .setPlaceholder("Select Team Size")
-                .addOptions(
-                    { label: "Duo", value: "Duo" },
-                    { label: "Trio", value: "Trio" },
-                    { label: "Squad", value: "Squad" }
-                )
-        );
+        const rows = [
 
-        // ===== ROW 2: REGION =====
-        const regionMenu = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("region")
-                .setPlaceholder("Select Region")
-                .addOptions(
-                    { label: "NAE", value: "NAE" },
-                    { label: "NAC", value: "NAC" },
-                    { label: "EU", value: "EU" }
-                )
-        );
+            // TEAM
+            new ActionRowBuilder().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId("team_size")
+                    .setPlaceholder("Select Team Size")
+                    .addOptions(
+                        { label: "Duo", value: "Duo" },
+                        { label: "Trio", value: "Trio" },
+                        { label: "Squad", value: "Squad" }
+                    )
+            ),
 
-        // ===== ROW 3: MODE =====
-        const modeMenu = new ActionRowBuilder().addComponents(
-            new StringSelectMenuBuilder()
-                .setCustomId("mode")
-                .setPlaceholder("Select Mode")
-                .addOptions(
-                    { label: "Cash Cup", value: "Cash Cup" },
-                    { label: "FNCS", value: "FNCS" },
-                    { label: "Zero Build", value: "ZeroBuild" },
-                    { label: "Reload", value: "Reload" }
-                )
-        );
+            // REGION
+            new ActionRowBuilder().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId("region")
+                    .setPlaceholder("Select Region")
+                    .addOptions(
+                        { label: "NAE", value: "NAE" },
+                        { label: "NAC", value: "NAC" },
+                        { label: "EU", value: "EU" }
+                    )
+            ),
 
-        // ===== ROW 4: PING BUTTONS =====
-        const pingRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("ping_0_20").setLabel("0-20").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("ping_20_40").setLabel("20-40").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("ping_40_60").setLabel("40-60").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("ping_60_100").setLabel("60-100").setStyle(ButtonStyle.Secondary)
-        );
+            // MODE
+            new ActionRowBuilder().addComponents(
+                new StringSelectMenuBuilder()
+                    .setCustomId("mode")
+                    .setPlaceholder("Select Mode")
+                    .addOptions(
+                        { label: "Cash Cup", value: "Cash Cup" },
+                        { label: "FNCS", value: "FNCS" },
+                        { label: "Zero Build", value: "ZeroBuild" },
+                        { label: "Reload", value: "Reload" }
+                    )
+            ),
 
-        // ===== ROW 5: FPS + ROLE + SEND =====
-        const finalRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("fps_60").setLabel("60-120 FPS").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("fps_120").setLabel("120-240 FPS").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("role_igl").setLabel("IGL").setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("role_fragger").setLabel("FRAGGER").setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("lfd_send").setLabel("SEND").setStyle(ButtonStyle.Success)
-        );
+            // PING
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId("ping_0_20").setLabel("0-20ms").setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId("ping_20_40").setLabel("20-40ms").setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId("ping_40_60").setLabel("40-60ms").setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId("ping_60_100").setLabel("60-100ms").setStyle(ButtonStyle.Secondary)
+            ),
+
+            // FPS + ROLE + SEND
+            new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId("fps_60").setLabel("60-120 FPS").setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId("fps_120").setLabel("120-240 FPS").setStyle(ButtonStyle.Secondary),
+                new ButtonBuilder().setCustomId("role_igl").setLabel("IGL").setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId("role_fragger").setLabel("FRAGGER").setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId("lfd_send").setLabel("SEND POST").setStyle(ButtonStyle.Success)
+            )
+        ];
 
         return interaction.reply({
             embeds: [embed],
-            components: [teamMenu, regionMenu, modeMenu, pingRow, finalRow],
-            flags: 64
+            components: rows,
+            ephemeral: true
         });
     }
 
-    // ===== SELECT MENUS =====
+    // ================= SELECT =================
     if (interaction.isStringSelectMenu()) {
 
         const data = userData.get(interaction.user.id);
@@ -140,21 +148,21 @@ client.on("interactionCreate", async (interaction) => {
 
         userData.set(interaction.user.id, data);
 
-        return interaction.reply({ content: "Saved", flags: 64 });
+        return interaction.reply({ content: "Saved", ephemeral: true });
     }
 
-    // ===== BUTTONS =====
+    // ================= BUTTONS =================
     if (interaction.isButton()) {
 
         const data = userData.get(interaction.user.id);
-        if (!data) return;
+        if (!data) return interaction.reply({ content: "No setup found", ephemeral: true });
 
         if (interaction.customId.startsWith("ping_")) {
             data.ping = interaction.customId.replace("ping_", "").replaceAll("_", "-") + "ms";
         }
 
         if (interaction.customId.startsWith("fps_")) {
-            data.fps = interaction.customId.replace("fps_", "") + "+";
+            data.fps = interaction.customId.replace("fps_", "") + "+ FPS";
         }
 
         if (interaction.customId.startsWith("role_")) {
@@ -163,51 +171,75 @@ client.on("interactionCreate", async (interaction) => {
 
         userData.set(interaction.user.id, data);
 
-        // ===== SEND FINAL =====
+        // ================= SEND =================
         if (interaction.customId === "lfd_send") {
 
-            const d = userData.get(interaction.user.id);
-            if (!d) return interaction.reply({ content: "No data found", flags: 64 });
+            try {
+                const d = userData.get(interaction.user.id);
 
-            d.pr = await getPR(d.fortniteName);
+                if (!d?.fortniteName) {
+                    return interaction.reply({
+                        content: "Finish setup first",
+                        ephemeral: true
+                    });
+                }
 
-            const embed = new EmbedBuilder()
-                .setTitle("LFD POST")
-                .addFields(
-                    { name: "Name", value: d.fortniteName || "N/A" },
-                    { name: "Team", value: d.teamSize || "N/A" },
-                    { name: "PR", value: d.pr },
-                    { name: "Ping", value: d.ping || "N/A" },
-                    { name: "FPS", value: d.fps || "N/A" },
-                    { name: "Role", value: d.role || "N/A" },
-                    { name: "Region", value: d.region || "N/A" },
-                    { name: "Mode", value: d.mode || "N/A" }
-                );
+                d.pr = await getPR(d.fortniteName);
 
-            await interaction.channel.send({ embeds: [embed] });
+                const embed = new EmbedBuilder()
+                    .setTitle("🔥 LFD POST")
+                    .setColor("Green")
+                    .addFields(
+                        { name: "Name", value: d.fortniteName || "N/A", inline: true },
+                        { name: "Team", value: d.teamSize || "N/A", inline: true },
+                        { name: "PR", value: d.pr, inline: true },
+                        { name: "Ping", value: d.ping || "N/A", inline: true },
+                        { name: "FPS", value: d.fps || "N/A", inline: true },
+                        { name: "Role", value: d.role || "N/A", inline: true },
+                        { name: "Region", value: d.region || "N/A", inline: true },
+                        { name: "Mode", value: d.mode || "N/A", inline: true }
+                    );
 
-            return interaction.reply({
-                content: "Sent",
-                flags: 64
-            });
+                await interaction.channel.send({ embeds: [embed] });
+
+                return interaction.reply({
+                    content: "Posted successfully",
+                    ephemeral: true
+                });
+
+            } catch (err) {
+                console.error(err);
+                return interaction.reply({
+                    content: "Error posting LFD",
+                    ephemeral: true
+                });
+            }
         }
 
-        return interaction.reply({ content: "Updated", flags: 64 });
+        return interaction.reply({ content: "Updated", ephemeral: true });
     }
 });
 
-// ===== PR SCRAPER =====
+// ================= PR SCRAPER =================
 async function getPR(name) {
     try {
         const url = `https://fortnitetracker.com/profile/all/${encodeURIComponent(name)}/events`;
-        const { data } = await axios.get(url);
+
+        const { data } = await axios.get(url, {
+            timeout: 10000,
+            headers: {
+                "User-Agent": "Mozilla/5.0"
+            }
+        });
 
         const $ = cheerio.load(data);
+
         const pr = $(".profile-events-totals__value").first().text().trim();
 
-        return pr || "N/A";
-    } catch {
-        return "N/A";
+        return pr || "0";
+    } catch (err) {
+        console.log("PR error:", err.message);
+        return "0";
     }
 }
 
