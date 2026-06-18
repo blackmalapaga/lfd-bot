@@ -13,7 +13,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
     console.log("Deploying slash commands...");
 
     await rest.put(
-      Routes.applicationCommands("YOUR_BOT_CLIENT_ID"),
+      Routes.applicationCommands("1517292944829448363"),
       { body: commands }
     );
 
