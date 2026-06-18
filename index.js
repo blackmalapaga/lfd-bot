@@ -25,34 +25,31 @@ client.once("ready", () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
-// ====================== /lfd ======================
+// ====================== MAIN INTERACTIONS ======================
 client.on("interactionCreate", async (interaction) => {
 
-    // COMMAND
-    if (interaction.isChatInputCommand()) {
-        if (interaction.commandName === "lfd") {
+    // ====================== /lfd COMMAND ======================
+    if (interaction.isChatInputCommand() && interaction.commandName === "lfd") {
 
-            const modal = new ModalBuilder()
-                .setCustomId("lfd_modal")
-                .setTitle("Buscando Jugadores");
+        const modal = new ModalBuilder()
+            .setCustomId("lfd_modal")
+            .setTitle("Buscando Jugadores");
 
-            const nameInput = new TextInputBuilder()
-                .setCustomId("fortnite_name")
-                .setLabel("Nombre de Fortnite")
-                .setStyle(TextInputStyle.Short)
-                .setRequired(true);
+        const nameInput = new TextInputBuilder()
+            .setCustomId("fortnite_name")
+            .setLabel("Nombre de Fortnite")
+            .setStyle(TextInputStyle.Short)
+            .setRequired(true);
 
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(nameInput)
-            );
+        modal.addComponents(
+            new ActionRowBuilder().addComponents(nameInput)
+        );
 
-            return interaction.showModal(modal);
-        }
+        return interaction.showModal(modal);
     }
 
-    // MODAL SUBMIT
-    if (interaction.isModalSubmit()) {
-        if (interaction.customId !== "lfd_modal") return;
+    // ====================== MODAL SUBMIT ======================
+    if (interaction.isModalSubmit() && interaction.customId === "lfd_modal") {
 
         const fortniteName = interaction.fields.getTextInputValue("fortnite_name");
 
@@ -98,7 +95,7 @@ client.on("interactionCreate", async (interaction) => {
                     { label: "FNCS", value: "FNCS" },
                     { label: "Torneo Meme", value: "Meme" },
                     { label: "Reload", value: "Reload" },
-                    { label: "Cero Construcción", value: "ZeroBuild" }
+                    { label: "Zero Build", value: "ZeroBuild" }
                 )
         );
 
@@ -122,12 +119,21 @@ client.on("interactionCreate", async (interaction) => {
             new ButtonBuilder().setCustomId("role_backpack").setLabel("Backpack").setStyle(ButtonStyle.Primary)
         );
 
-        return interaction.reply({
-            content: "Configura tu LFD:",
+        // PART 1 (SAFE)
+        await interaction.reply({
+            content: "🧠 Configura tu LFD (Parte 1)",
             components: [
                 teamMenu,
                 regionMenu,
-                modeMenu,
+                modeMenu
+            ],
+            ephemeral: true
+        });
+
+        // PART 2 (SAFE)
+        await interaction.followUp({
+            content: "⚡ Configura tu LFD (Parte 2)",
+            components: [
                 pingButtons,
                 fpsButtons,
                 roleButtons
@@ -136,8 +142,9 @@ client.on("interactionCreate", async (interaction) => {
         });
     }
 
-    // SELECT MENUS
+    // ====================== SELECT MENUS ======================
     if (interaction.isStringSelectMenu()) {
+
         const data = userData.get(interaction.user.id);
         if (!data) return;
 
@@ -146,11 +153,13 @@ client.on("interactionCreate", async (interaction) => {
         if (interaction.customId === "mode") data.mode = interaction.values[0];
 
         userData.set(interaction.user.id, data);
+
         return interaction.reply({ content: "Guardado", ephemeral: true });
     }
 
-    // BUTTONS
+    // ====================== BUTTONS ======================
     if (interaction.isButton()) {
+
         const data = userData.get(interaction.user.id);
         if (!data) return;
 
@@ -167,11 +176,12 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         userData.set(interaction.user.id, data);
+
         return interaction.reply({ content: "Actualizado", ephemeral: true });
     }
 });
 
-// ====================== Fortnite PR ======================
+// ====================== PR SCRAPER ======================
 async function getPR(name) {
     try {
         const url = `https://fortnitetracker.com/profile/all/${encodeURIComponent(name)}/events`;
@@ -186,8 +196,9 @@ async function getPR(name) {
     }
 }
 
-// OPTIONAL FINAL POST (manual trigger later)
+// ====================== FINAL EMBED ======================
 client.on("interactionCreate", async (interaction) => {
+
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "lfd") return;
 
