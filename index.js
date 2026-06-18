@@ -18,17 +18,17 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
-// Store temporary user data
+// temporary storage
 const userData = new Map();
 
 client.once("ready", () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
-// ---------- SLASH COMMAND ----------
+// ====================== /lfd ======================
 client.on("interactionCreate", async (interaction) => {
 
-    // /lfd command
+    // COMMAND
     if (interaction.isChatInputCommand()) {
         if (interaction.commandName === "lfd") {
 
@@ -39,7 +39,8 @@ client.on("interactionCreate", async (interaction) => {
             const nameInput = new TextInputBuilder()
                 .setCustomId("fortnite_name")
                 .setLabel("Nombre de Fortnite")
-                .setStyle(TextInputStyle.Short);
+                .setStyle(TextInputStyle.Short)
+                .setRequired(true);
 
             modal.addComponents(
                 new ActionRowBuilder().addComponents(nameInput)
@@ -51,90 +52,88 @@ client.on("interactionCreate", async (interaction) => {
 
     // MODAL SUBMIT
     if (interaction.isModalSubmit()) {
+        if (interaction.customId !== "lfd_modal") return;
 
-        if (interaction.customId === "lfd_modal") {
+        const fortniteName = interaction.fields.getTextInputValue("fortnite_name");
 
-            const fortniteName = interaction.fields.getTextInputValue("fortnite_name");
+        userData.set(interaction.user.id, {
+            fortniteName,
+            ping: "",
+            fps: "",
+            role: "",
+            teamSize: "",
+            region: "",
+            mode: "",
+            pr: "Cargando..."
+        });
 
-            userData.set(interaction.user.id, {
-                fortniteName,
-                ping: "",
-                fps: "",
-                role: "",
-                teamSize: "",
-                region: "",
-                mode: "",
-                pr: "Cargando..."
-            });
+        const teamMenu = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("team_size")
+                .setPlaceholder("Tamaño del equipo")
+                .addOptions(
+                    { label: "Duo", value: "Duo" },
+                    { label: "Trio", value: "Trio" },
+                    { label: "Squad", value: "Squad" }
+                )
+        );
 
-            const teamMenu = new ActionRowBuilder().addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId("team_size")
-                    .setPlaceholder("Tamaño del equipo")
-                    .addOptions(
-                        { label: "Duo", value: "Duo" },
-                        { label: "Trio", value: "Trio" },
-                        { label: "Squad", value: "Squad" }
-                    )
-            );
+        const regionMenu = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("region")
+                .setPlaceholder("Región")
+                .addOptions(
+                    { label: "NAE", value: "NAE" },
+                    { label: "NAC", value: "NAC" },
+                    { label: "EUROPA", value: "EUROPA" }
+                )
+        );
 
-            const regionMenu = new ActionRowBuilder().addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId("region")
-                    .setPlaceholder("Región")
-                    .addOptions(
-                        { label: "NAE", value: "NAE" },
-                        { label: "NAC", value: "NAC" },
-                        { label: "EUROPA", value: "EUROPA" }
-                    )
-            );
+        const modeMenu = new ActionRowBuilder().addComponents(
+            new StringSelectMenuBuilder()
+                .setCustomId("mode")
+                .setPlaceholder("Modo")
+                .addOptions(
+                    { label: "Cash Cup", value: "Cash Cup" },
+                    { label: "FNCS", value: "FNCS" },
+                    { label: "Torneo Meme", value: "Meme" },
+                    { label: "Reload", value: "Reload" },
+                    { label: "Cero Construcción", value: "ZeroBuild" }
+                )
+        );
 
-            const modeMenu = new ActionRowBuilder().addComponents(
-                new StringSelectMenuBuilder()
-                    .setCustomId("mode")
-                    .setPlaceholder("Modo")
-                    .addOptions(
-                        { label: "Cash Cup", value: "Cash Cup" },
-                        { label: "FNCS", value: "FNCS" },
-                        { label: "Torneo Meme", value: "Meme" },
-                        { label: "Reload", value: "Reload" },
-                        { label: "Cero Construcción", value: "ZeroBuild" }
-                    )
-            );
+        const pingButtons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("ping_0_20").setLabel("0-20ms").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("ping_20_40").setLabel("20-40ms").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("ping_40_60").setLabel("40-60ms").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("ping_60_100").setLabel("60-100ms").setStyle(ButtonStyle.Secondary)
+        );
 
-            const pingButtons = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("ping_0_20").setLabel("0-20ms").setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId("ping_20_40").setLabel("20-40ms").setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId("ping_40_60").setLabel("40-60ms").setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId("ping_60_100").setLabel("60-100ms").setStyle(ButtonStyle.Secondary)
-            );
+        const fpsButtons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("fps_60").setLabel("60-120").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("fps_120").setLabel("120-240").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("fps_240").setLabel("240+").setStyle(ButtonStyle.Secondary)
+        );
 
-            const fpsButtons = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("fps_60").setLabel("60-120").setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId("fps_120").setLabel("120-240").setStyle(ButtonStyle.Secondary),
-                new ButtonBuilder().setCustomId("fps_240").setLabel("240+").setStyle(ButtonStyle.Secondary)
-            );
+        const roleButtons = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("role_igl").setLabel("IGL").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("role_fragger").setLabel("Fragger").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("role_support").setLabel("Support").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("role_backpack").setLabel("Backpack").setStyle(ButtonStyle.Primary)
+        );
 
-            const roleButtons = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId("role_igl").setLabel("IGL").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("role_fragger").setLabel("Fragger").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("role_support").setLabel("Support").setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId("role_backpack").setLabel("Backpack").setStyle(ButtonStyle.Primary)
-            );
-
-            await interaction.reply({
-                content: "Configura tu LFD:",
-                components: [
-                    teamMenu,
-                    regionMenu,
-                    modeMenu,
-                    pingButtons,
-                    fpsButtons,
-                    roleButtons
-                ],
-                ephemeral: true
-            });
-        }
+        return interaction.reply({
+            content: "Configura tu LFD:",
+            components: [
+                teamMenu,
+                regionMenu,
+                modeMenu,
+                pingButtons,
+                fpsButtons,
+                roleButtons
+            ],
+            ephemeral: true
+        });
     }
 
     // SELECT MENUS
@@ -164,17 +163,15 @@ client.on("interactionCreate", async (interaction) => {
         }
 
         if (interaction.customId.startsWith("role_")) {
-            const role = interaction.customId.replace("role_", "").toUpperCase();
-            data.role = role;
+            data.role = interaction.customId.replace("role_", "").toUpperCase();
         }
 
         userData.set(interaction.user.id, data);
-
         return interaction.reply({ content: "Actualizado", ephemeral: true });
     }
 });
 
-// OPTIONAL: PR FETCH (safe version)
+// ====================== Fortnite PR ======================
 async function getPR(name) {
     try {
         const url = `https://fortnitetracker.com/profile/all/${encodeURIComponent(name)}/events`;
@@ -189,7 +186,7 @@ async function getPR(name) {
     }
 }
 
-// FINAL POST COMMAND (simple trigger)
+// OPTIONAL FINAL POST (manual trigger later)
 client.on("interactionCreate", async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     if (interaction.commandName !== "lfd") return;
