@@ -1,3 +1,11 @@
+If your bot works but Discord still says **"The application did not respond"**, there are two hidden bottlenecks in the interaction workflow causing this:
+
+1. **The Button Setup (`updateUI`):** When you click a button (like selecting "Duo" or "PC"), the bot updates the map data, updates the embed, and then calls `interaction.reply({ content: "Updated selection!", ephemeral: true });`. However, if the network has even a millisecond of latency, Discord's strict 3-second window expires.
+2. **The Fix:** We change all the setup button behaviors to use `interaction.deferUpdate()`. This instantly stops Discord's loading spinner and silently modifies the panel state without requiring popup alert spam.
+
+Here is the finalized code. Replacing your script with this version ensures every interaction is structurally acknowledged within the required execution window.
+
+```javascript
 const {
     Client,
     GatewayIntentBits,
@@ -14,7 +22,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const express = require("express");
 
-// ================= EXPRESS WEB SERVER (FOR RENDER PORT BINDING) =================
+// ================= EXPRESS WEB SERVER =================
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -105,6 +113,7 @@ client.on("interactionCreate", async (interaction) => {
         });
 
         userData.get(interaction.user.id).msgId = msg.id;
+        return;
     }
 
     // ================= BUTTONS =================
@@ -112,19 +121,11 @@ client.on("interactionCreate", async (interaction) => {
         const data = userData.get(interaction.user.id);
         if (!data) return interaction.reply({ content: "Run /look_for_player first", ephemeral: true });
 
-        // Selections Parsing
-        if (interaction.customId.startsWith("team_")) data.team = interaction.customId.replace("team_", "");
-        if (interaction.customId.startsWith("ping_")) data.ping = interaction.customId.replace("ping_", "").replaceAll("_", "-") + "ms";
-        if (interaction.customId.startsWith("fps_")) data.fps = interaction.customId.replace("fps_", "") + "+";
-        if (interaction.customId.startsWith("role_")) data.role = interaction.customId.replace("role_", "").toUpperCase();
-        if (interaction.customId.startsWith("platform_")) data.platform = interaction.customId.replace("platform_", "").toUpperCase();
-
-        userData.set(interaction.user.id, data);
-
-        // POST HANDLING (WITH DEFER TO PREVENT TIMEOUTS DURING SCRAPING)
+        // POST HANDLING (CRITICAL DEFENSE FOR SLOW CALLS)
         if (interaction.customId === "send_post") {
             if (!data.name) return interaction.reply({ content: "Setup first", ephemeral: true });
             
+            // Instantly tells Discord we are processing so it doesn't say "Application did not respond"
             await interaction.deferReply({ ephemeral: true });
 
             data.pr = await getPR(data.name);
@@ -148,8 +149,19 @@ client.on("interactionCreate", async (interaction) => {
             return interaction.editReply({ content: "Posted successfully with updated PR!" });
         }
 
+        // Defer UI changes immediately to stop loading animations
+        await interaction.deferUpdate();
+
+        // Selections Parsing
+        if (interaction.customId.startsWith("team_")) data.team = interaction.customId.replace("team_", "");
+        if (interaction.customId.startsWith("ping_")) data.ping = interaction.customId.replace("ping_", "").replaceAll("_", "-") + "ms";
+        if (interaction.customId.startsWith("fps_")) data.fps = interaction.customId.replace("fps_", "") + "+";
+        if (interaction.customId.startsWith("role_")) data.role = interaction.customId.replace("role_", "").toUpperCase();
+        if (interaction.customId.startsWith("platform_")) data.platform = interaction.customId.replace("platform_", "").toUpperCase();
+
+        userData.set(interaction.user.id, data);
         await updateUI(interaction);
-        return interaction.reply({ content: "Updated selection!", ephemeral: true });
+        return;
     }
 
     // ================= SELECT MENUS =================
@@ -157,13 +169,14 @@ client.on("interactionCreate", async (interaction) => {
         const data = userData.get(interaction.user.id);
         if (!data) return;
 
+        await interaction.deferUpdate();
+
         if (interaction.customId === "region") data.region = interaction.values[0];
         if (interaction.customId === "tournament") data.tournament = interaction.values[0];
 
         userData.set(interaction.user.id, data);
-
         await updateUI(interaction);
-        return interaction.reply({ content: "Saved choices!", ephemeral: true });
+        return;
     }
 });
 
@@ -249,3 +262,5 @@ async function updateUI(interaction) {
 }
 
 client.login(process.env.TOKEN);
+
+```
