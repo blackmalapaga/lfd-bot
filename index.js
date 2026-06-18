@@ -27,7 +27,7 @@ client.once("ready", () => {
 // ================= MAIN =================
 client.on("interactionCreate", async (interaction) => {
 
-    // ===== /lfd =====
+    // ===== /lfd COMMAND =====
     if (interaction.isChatInputCommand() && interaction.commandName === "lfd") {
 
         const modal = new ModalBuilder()
@@ -47,7 +47,7 @@ client.on("interactionCreate", async (interaction) => {
         return interaction.showModal(modal);
     }
 
-    // ===== MODAL =====
+    // ===== MODAL SUBMIT =====
     if (interaction.isModalSubmit() && interaction.customId === "lfd_modal") {
 
         const fortniteName = interaction.fields.getTextInputValue("fortnite_name");
@@ -63,10 +63,15 @@ client.on("interactionCreate", async (interaction) => {
             pr: "Loading..."
         });
 
+        const embed = new EmbedBuilder()
+            .setTitle("LFD SETUP PANEL")
+            .setDescription("Complete your profile below and press SEND when ready.");
+
+        // ===== ROW 1: TEAM =====
         const teamMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("team_size")
-                .setPlaceholder("Team Size")
+                .setPlaceholder("Select Team Size")
                 .addOptions(
                     { label: "Duo", value: "Duo" },
                     { label: "Trio", value: "Trio" },
@@ -74,10 +79,11 @@ client.on("interactionCreate", async (interaction) => {
                 )
         );
 
+        // ===== ROW 2: REGION =====
         const regionMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("region")
-                .setPlaceholder("Region")
+                .setPlaceholder("Select Region")
                 .addOptions(
                     { label: "NAE", value: "NAE" },
                     { label: "NAC", value: "NAC" },
@@ -85,10 +91,11 @@ client.on("interactionCreate", async (interaction) => {
                 )
         );
 
+        // ===== ROW 3: MODE =====
         const modeMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("mode")
-                .setPlaceholder("Mode")
+                .setPlaceholder("Select Mode")
                 .addOptions(
                     { label: "Cash Cup", value: "Cash Cup" },
                     { label: "FNCS", value: "FNCS" },
@@ -97,43 +104,27 @@ client.on("interactionCreate", async (interaction) => {
                 )
         );
 
-        const pingButtons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("ping_0_20").setLabel("0-20ms").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("ping_20_40").setLabel("20-40ms").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("ping_40_60").setLabel("40-60ms").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("ping_60_100").setLabel("60-100ms").setStyle(ButtonStyle.Secondary)
+        // ===== ROW 4: PING BUTTONS =====
+        const pingRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("ping_0_20").setLabel("0-20").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("ping_20_40").setLabel("20-40").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("ping_40_60").setLabel("40-60").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("ping_60_100").setLabel("60-100").setStyle(ButtonStyle.Secondary)
         );
 
-        const fpsButtons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("fps_60").setLabel("60-120").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("fps_120").setLabel("120-240").setStyle(ButtonStyle.Secondary),
-            new ButtonBuilder().setCustomId("fps_240").setLabel("240+").setStyle(ButtonStyle.Secondary)
-        );
-
-        const roleButtons = new ActionRowBuilder().addComponents(
+        // ===== ROW 5: FPS + ROLE + SEND =====
+        const finalRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId("fps_60").setLabel("60-120 FPS").setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId("fps_120").setLabel("120-240 FPS").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("role_igl").setLabel("IGL").setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("role_fragger").setLabel("Fragger").setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("role_support").setLabel("Support").setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("role_backpack").setLabel("Backpack").setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId("role_fragger").setLabel("FRAGGER").setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId("lfd_send").setLabel("SEND").setStyle(ButtonStyle.Success)
         );
 
-        const sendButton = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId("lfd_send")
-                .setLabel("SEND LFD")
-                .setStyle(ButtonStyle.Success)
-        );
-
-        await interaction.reply({
-            content: "Setup your LFD (Part 1)",
-            components: [teamMenu, regionMenu, modeMenu],
-            ephemeral: true
-        });
-
-        await interaction.followUp({
-            content: "Setup your LFD (Part 2)",
-            components: [pingButtons, fpsButtons, roleButtons, sendButton],
-            ephemeral: true
+        return interaction.reply({
+            embeds: [embed],
+            components: [teamMenu, regionMenu, modeMenu, pingRow, finalRow],
+            flags: 64
         });
     }
 
@@ -149,7 +140,7 @@ client.on("interactionCreate", async (interaction) => {
 
         userData.set(interaction.user.id, data);
 
-        return interaction.reply({ content: "Saved", ephemeral: true });
+        return interaction.reply({ content: "Saved", flags: 64 });
     }
 
     // ===== BUTTONS =====
@@ -172,11 +163,11 @@ client.on("interactionCreate", async (interaction) => {
 
         userData.set(interaction.user.id, data);
 
-        // ===== FINAL SEND BUTTON =====
+        // ===== SEND FINAL =====
         if (interaction.customId === "lfd_send") {
 
             const d = userData.get(interaction.user.id);
-            if (!d) return interaction.reply({ content: "No data", ephemeral: true });
+            if (!d) return interaction.reply({ content: "No data found", flags: 64 });
 
             d.pr = await getPR(d.fortniteName);
 
@@ -193,16 +184,15 @@ client.on("interactionCreate", async (interaction) => {
                     { name: "Mode", value: d.mode || "N/A" }
                 );
 
-            // SEND TO CHANNEL (THIS FIXES YOUR ISSUE)
             await interaction.channel.send({ embeds: [embed] });
 
             return interaction.reply({
-                content: "LFD SENT",
-                ephemeral: true
+                content: "Sent",
+                flags: 64
             });
         }
 
-        return interaction.reply({ content: "Updated", ephemeral: true });
+        return interaction.reply({ content: "Updated", flags: 64 });
     }
 });
 
