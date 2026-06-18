@@ -8,18 +8,14 @@ client.once("ready", () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
-<<<<<<< HEAD
-client.login(process.env.TOKEN);
-=======
 client.on("interactionCreate", async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === "lfd") {
         await interaction.reply({
-            content: "Sistema LFD activo"
+            content: "LFD system activo"
         });
     }
 });
 
 client.login(process.env.TOKEN);
->>>>>>> 2df0a93 (fix lfd command)
