@@ -1,11 +1,3 @@
-If your bot works but Discord still says **"The application did not respond"**, there are two hidden bottlenecks in the interaction workflow causing this:
-
-1. **The Button Setup (`updateUI`):** When you click a button (like selecting "Duo" or "PC"), the bot updates the map data, updates the embed, and then calls `interaction.reply({ content: "Updated selection!", ephemeral: true });`. However, if the network has even a millisecond of latency, Discord's strict 3-second window expires.
-2. **The Fix:** We change all the setup button behaviors to use `interaction.deferUpdate()`. This instantly stops Discord's loading spinner and silently modifies the panel state without requiring popup alert spam.
-
-Here is the finalized code. Replacing your script with this version ensures every interaction is structurally acknowledged within the required execution window.
-
-```javascript
 const {
     Client,
     GatewayIntentBits,
@@ -121,11 +113,10 @@ client.on("interactionCreate", async (interaction) => {
         const data = userData.get(interaction.user.id);
         if (!data) return interaction.reply({ content: "Run /look_for_player first", ephemeral: true });
 
-        // POST HANDLING (CRITICAL DEFENSE FOR SLOW CALLS)
+        // POST HANDLING
         if (interaction.customId === "send_post") {
             if (!data.name) return interaction.reply({ content: "Setup first", ephemeral: true });
             
-            // Instantly tells Discord we are processing so it doesn't say "Application did not respond"
             await interaction.deferReply({ ephemeral: true });
 
             data.pr = await getPR(data.name);
@@ -149,7 +140,6 @@ client.on("interactionCreate", async (interaction) => {
             return interaction.editReply({ content: "Posted successfully with updated PR!" });
         }
 
-        // Defer UI changes immediately to stop loading animations
         await interaction.deferUpdate();
 
         // Selections Parsing
@@ -201,23 +191,18 @@ function buildEmbed(data) {
 
 function buildUI() {
     return [
-        // ROW 1: TEAM SIZE & PLATFORM
         new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("team_duo").setLabel("Duo").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("team_trio").setLabel("Trio").setStyle(ButtonStyle.Secondary),
             new ButtonBuilder().setCustomId("platform_pc").setLabel("PC").setStyle(ButtonStyle.Success),
             new ButtonBuilder().setCustomId("platform_console").setLabel("Console").setStyle(ButtonStyle.Success)
         ),
-
-        // ROW 2: ROLES & SUBMIT
         new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("role_igl").setLabel("IGL").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("role_fragger").setLabel("Fragger").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("role_support").setLabel("Support").setStyle(ButtonStyle.Primary),
             new ButtonBuilder().setCustomId("send_post").setLabel("⚡ SEND POST").setStyle(ButtonStyle.Danger)
         ),
-
-        // ROW 3: REGION DROPDOWN
         new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("region")
@@ -229,8 +214,6 @@ function buildUI() {
                     { label: "BR", value: "BR" }
                 )
         ),
-
-        // ROW 4: TOURNAMENT DROPDOWN
         new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("tournament")
@@ -262,5 +245,3 @@ async function updateUI(interaction) {
 }
 
 client.login(process.env.TOKEN);
-
-```
