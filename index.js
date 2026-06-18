@@ -18,26 +18,25 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
-// temporary storage
 const userData = new Map();
 
 client.once("ready", () => {
     console.log(`Logged in as ${client.user.tag}`);
 });
 
-// ====================== MAIN INTERACTIONS ======================
+// ================= MAIN =================
 client.on("interactionCreate", async (interaction) => {
 
-    // ====================== /lfd COMMAND ======================
+    // ===== /lfd =====
     if (interaction.isChatInputCommand() && interaction.commandName === "lfd") {
 
         const modal = new ModalBuilder()
             .setCustomId("lfd_modal")
-            .setTitle("Buscando Jugadores");
+            .setTitle("LFD Setup");
 
         const nameInput = new TextInputBuilder()
             .setCustomId("fortnite_name")
-            .setLabel("Nombre de Fortnite")
+            .setLabel("Fortnite Name")
             .setStyle(TextInputStyle.Short)
             .setRequired(true);
 
@@ -48,7 +47,7 @@ client.on("interactionCreate", async (interaction) => {
         return interaction.showModal(modal);
     }
 
-    // ====================== MODAL SUBMIT ======================
+    // ===== MODAL =====
     if (interaction.isModalSubmit() && interaction.customId === "lfd_modal") {
 
         const fortniteName = interaction.fields.getTextInputValue("fortnite_name");
@@ -61,13 +60,13 @@ client.on("interactionCreate", async (interaction) => {
             teamSize: "",
             region: "",
             mode: "",
-            pr: "Cargando..."
+            pr: "Loading..."
         });
 
         const teamMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("team_size")
-                .setPlaceholder("Tamaño del equipo")
+                .setPlaceholder("Team Size")
                 .addOptions(
                     { label: "Duo", value: "Duo" },
                     { label: "Trio", value: "Trio" },
@@ -78,24 +77,23 @@ client.on("interactionCreate", async (interaction) => {
         const regionMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("region")
-                .setPlaceholder("Región")
+                .setPlaceholder("Region")
                 .addOptions(
                     { label: "NAE", value: "NAE" },
                     { label: "NAC", value: "NAC" },
-                    { label: "EUROPA", value: "EUROPA" }
+                    { label: "EU", value: "EU" }
                 )
         );
 
         const modeMenu = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId("mode")
-                .setPlaceholder("Modo")
+                .setPlaceholder("Mode")
                 .addOptions(
                     { label: "Cash Cup", value: "Cash Cup" },
                     { label: "FNCS", value: "FNCS" },
-                    { label: "Torneo Meme", value: "Meme" },
-                    { label: "Reload", value: "Reload" },
-                    { label: "Zero Build", value: "ZeroBuild" }
+                    { label: "Zero Build", value: "ZeroBuild" },
+                    { label: "Reload", value: "Reload" }
                 )
         );
 
@@ -119,30 +117,27 @@ client.on("interactionCreate", async (interaction) => {
             new ButtonBuilder().setCustomId("role_backpack").setLabel("Backpack").setStyle(ButtonStyle.Primary)
         );
 
-        // PART 1 (SAFE)
+        const sendButton = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId("lfd_send")
+                .setLabel("SEND LFD")
+                .setStyle(ButtonStyle.Success)
+        );
+
         await interaction.reply({
-            content: "🧠 Configura tu LFD (Parte 1)",
-            components: [
-                teamMenu,
-                regionMenu,
-                modeMenu
-            ],
+            content: "Setup your LFD (Part 1)",
+            components: [teamMenu, regionMenu, modeMenu],
             ephemeral: true
         });
 
-        // PART 2 (SAFE)
         await interaction.followUp({
-            content: "⚡ Configura tu LFD (Parte 2)",
-            components: [
-                pingButtons,
-                fpsButtons,
-                roleButtons
-            ],
+            content: "Setup your LFD (Part 2)",
+            components: [pingButtons, fpsButtons, roleButtons, sendButton],
             ephemeral: true
         });
     }
 
-    // ====================== SELECT MENUS ======================
+    // ===== SELECT MENUS =====
     if (interaction.isStringSelectMenu()) {
 
         const data = userData.get(interaction.user.id);
@@ -154,20 +149,20 @@ client.on("interactionCreate", async (interaction) => {
 
         userData.set(interaction.user.id, data);
 
-        return interaction.reply({ content: "Guardado", ephemeral: true });
+        return interaction.reply({ content: "Saved", ephemeral: true });
     }
 
-    // ====================== BUTTONS ======================
+    // ===== BUTTONS =====
     if (interaction.isButton()) {
 
         const data = userData.get(interaction.user.id);
         if (!data) return;
 
-        if (interaction.customId.startsWith("ping")) {
+        if (interaction.customId.startsWith("ping_")) {
             data.ping = interaction.customId.replace("ping_", "").replaceAll("_", "-") + "ms";
         }
 
-        if (interaction.customId.startsWith("fps")) {
+        if (interaction.customId.startsWith("fps_")) {
             data.fps = interaction.customId.replace("fps_", "") + "+";
         }
 
@@ -177,11 +172,41 @@ client.on("interactionCreate", async (interaction) => {
 
         userData.set(interaction.user.id, data);
 
-        return interaction.reply({ content: "Actualizado", ephemeral: true });
+        // ===== FINAL SEND BUTTON =====
+        if (interaction.customId === "lfd_send") {
+
+            const d = userData.get(interaction.user.id);
+            if (!d) return interaction.reply({ content: "No data", ephemeral: true });
+
+            d.pr = await getPR(d.fortniteName);
+
+            const embed = new EmbedBuilder()
+                .setTitle("LFD POST")
+                .addFields(
+                    { name: "Name", value: d.fortniteName || "N/A" },
+                    { name: "Team", value: d.teamSize || "N/A" },
+                    { name: "PR", value: d.pr },
+                    { name: "Ping", value: d.ping || "N/A" },
+                    { name: "FPS", value: d.fps || "N/A" },
+                    { name: "Role", value: d.role || "N/A" },
+                    { name: "Region", value: d.region || "N/A" },
+                    { name: "Mode", value: d.mode || "N/A" }
+                );
+
+            // SEND TO CHANNEL (THIS FIXES YOUR ISSUE)
+            await interaction.channel.send({ embeds: [embed] });
+
+            return interaction.reply({
+                content: "LFD SENT",
+                ephemeral: true
+            });
+        }
+
+        return interaction.reply({ content: "Updated", ephemeral: true });
     }
 });
 
-// ====================== PR SCRAPER ======================
+// ===== PR SCRAPER =====
 async function getPR(name) {
     try {
         const url = `https://fortnitetracker.com/profile/all/${encodeURIComponent(name)}/events`;
@@ -195,32 +220,5 @@ async function getPR(name) {
         return "N/A";
     }
 }
-
-// ====================== FINAL EMBED ======================
-client.on("interactionCreate", async (interaction) => {
-
-    if (!interaction.isChatInputCommand()) return;
-    if (interaction.commandName !== "lfd") return;
-
-    const data = userData.get(interaction.user.id);
-    if (!data) return;
-
-    data.pr = await getPR(data.fortniteName);
-
-    const embed = new EmbedBuilder()
-        .setTitle("Buscando Jugadores")
-        .addFields(
-            { name: "Usuario", value: data.fortniteName || "N/A" },
-            { name: "Team", value: data.teamSize || "N/A" },
-            { name: "PR", value: data.pr },
-            { name: "Ping", value: data.ping || "N/A" },
-            { name: "FPS", value: data.fps || "N/A" },
-            { name: "Rol", value: data.role || "N/A" },
-            { name: "Región", value: data.region || "N/A" },
-            { name: "Modo", value: data.mode || "N/A" }
-        );
-
-    await interaction.reply({ embeds: [embed] });
-});
 
 client.login(process.env.TOKEN);
